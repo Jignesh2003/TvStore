@@ -1,17 +1,19 @@
-<?php 
-
+<?php
 session_start();
+
+require_once 'Utils/Validation.php';
 ?>
 
 <!doctype html>
 <html lang="en">
-  <head>
-   <!-- Required meta tags -->
-   <meta charset="utf-8">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Television Login</title>
     <!-- Required meta tags -->
-    
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
@@ -26,8 +28,10 @@ session_start();
             padding-left: 4rem;
             margin: 0;
         }
-        .login, .image {
-        min-height: 90vh;
+
+        .login,
+        .image {
+            min-height: 90vh;
         }
 
         .bg-image {
@@ -35,13 +39,14 @@ session_start();
             background-size: cover;
             background-position: center center;
         }
-
     </style>
-  </head>
-  <body>
+</head>
 
-  <?php
-    if($_SERVER["REQUEST_METHOD"] == "POST") {
+<body>
+
+    <?php
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+
         $servername = "localhost";
         $username = "root";
         $password = "";
@@ -52,50 +57,48 @@ session_start();
 
         // Check connection
         if ($conn->connect_error) {
-        // die("Connection failed: " . $conn->connect_error);
-        }
-        else {
+            // die("Connection failed: " . $conn->connect_error);
+        } else {
             // echo "Connected successfully";
 
-            if($_POST["inputPassword1"] == $_POST["inputPassword2"]) {
+            if ($_POST["inputPassword1"] == $_POST["inputPassword2"]) {
 
-            $firstName = $_POST['inputFirstName'];
-            $lastName = $_POST['inputLastName'];
-            $emailId = $_POST['inputEmail'];
-            $password = $_POST['inputPassword1'];
+                $firstName = $_POST['inputFirstName'];
+                $lastName = $_POST['inputLastName'];
+                $emailId = $_POST['inputEmail'];
+                $password = $_POST['inputPassword1'];
 
-            $sql = "SELECT * FROM `users` where `EmailId`='$emailId';";
-            $result = $conn->query($sql);
+                $sql = "SELECT * FROM `users` where `EmailId`='$emailId';";
+                $result = $conn->query($sql);
 
-            if ($result->num_rows == 1) {
-                ?>
-                    <div class="alert alert-danger" role="alert">
+                if ($result->num_rows == 1) {
+
+                    echo `<div class="alert alert-danger" role="alert">
                         User already exists
-                    </div>
-            <?php
-            } else {
-                $sql = "INSERT INTO `users` (`FirstName`, `LastName`, `EmailId`, `Password`) VALUES ('$firstName','$lastName','$emailId','$password')";
-                if ($conn->query($sql) === TRUE) {
-                    ?>
-                        <div class="alert alert-success " role="alert">
-                            User created successfully
-                        </div>
-                    <?php
-                    $sql = "SELECT * FROM `users` where `EmailId`='$emailId';";
-                    $result = $conn->query($sql);
-                    while($row = $result->fetch_assoc()) {
-                        $_SESSION["FirstName"] = $row['FirstName'];
-                        $_SESSION["LastName"] = $row['LastName'];
-                        $_SESSION["UserId"] = $row['UserId'];  
-                        $_SESSION["Email"] = $row['EmailId']; 
-                        $_SESSION["isLogin"] = true;
-                    }
-                    header("Location: ./index.php");
+                    </div>`;
                 } else {
-                    echo "Error: " . $sql . "<br>" . $conn->error;
+                    $sql = "INSERT INTO `users` (`FirstName`, `LastName`, `EmailId`, `Password`) VALUES ('$firstName','$lastName','$emailId','$password')";
+                    if ($conn->query($sql) === TRUE) {
+
+                        echo `<div class="alert alert-success " role="alert">
+                            User created successfully
+                        </div>`;
+
+                        $sql = "SELECT * FROM `users` where `EmailId`='$emailId';";
+                        $result = $conn->query($sql);
+                        while ($row = $result->fetch_assoc()) {
+                            $_SESSION["FirstName"] = $row['FirstName'];
+                            $_SESSION["LastName"] = $row['LastName'];
+                            $_SESSION["UserId"] = $row['UserId'];
+                            $_SESSION["Email"] = $row['EmailId'];
+                            $_SESSION["isLogin"] = true;
+                        }
+                        header("Location: ./index.php");
+                    } else {
+                        echo "Error: " . $sql . "<br>" . $conn->error;
+                    }
                 }
-            }
-            mysqli_close($conn); 
+                mysqli_close($conn);
             }
         }
     }
@@ -119,25 +122,25 @@ session_start();
                         <li class="nav-item"> <a class="nav-link pe-3 me-4 fw-bold active" href="./signup.php">SIGN-UP</a> </li>
                     </ul>
                     <ul class="navbar-nav icons ms-auto mb-2 mb-lg-0">
-                        <li class=" nav-item pe-5"> 
-                            <button onclick="window.location.href='./cart.php'" type="button" class="btn btn-primary position-relative" >
+                        <li class=" nav-item pe-5">
+                            <button onclick="window.location.href='./cart.php'" type="button" class="btn btn-primary position-relative">
                                 <a class="fa fa-shopping-bag" style="color:white;"></a>
                                 <?php
-                                            if(isset($_SESSION['isLogin'])) {                                                       // Displaing list of items
-                                                $user = $_SESSION['UserId']; 
-                                                $sql = "SELECT COUNT(*) as total FROM `orders` WHERE UserId=$user;";
-                                                $result = $conn->query($sql);
-                                                while($row = $result->fetch_assoc()) { ?>
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                                    <?php
-                                                        echo $row['total'];
-                                                    ?>
-                                </span>
+                                if (isset($_SESSION['isLogin'])) {                                                       // Displaing list of items
+                                    $user = $_SESSION['UserId'];
+                                    $sql = "SELECT COUNT(*) as total FROM `orders` WHERE UserId=$user;";
+                                    $result = $conn->query($sql);
+                                    while ($row = $result->fetch_assoc()) { ?>
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                            <?php
+                                            echo $row['total'];
+                                            ?>
+                                        </span>
                                 <?php
-                                                }
-                                            }
-                                ?>   
-                            </button>  
+                                    }
+                                }
+                                ?>
+                            </button>
                         </li>
                     </ul>
                 </div>
@@ -150,12 +153,12 @@ session_start();
         <div class="row no-gutter">
             <!-- The image half -->
             <div class="col-md-6 d-none d-md-flex bg-image"></div>
-    
-    
+
+
             <!-- The content half -->
             <div class="col-md-6 bg-light">
                 <div class="login d-flex align-items-center py-5">
-    
+
                     <!-- Demo content-->
                     <div class="container">
                         <div class="row">
@@ -185,10 +188,10 @@ session_start();
                             </div>
                         </div>
                     </div><!-- End -->
-    
+
                 </div>
             </div><!-- End -->
-    
+
         </div>
     </div>
 
@@ -233,7 +236,7 @@ session_start();
         <!-- Copyright -->
     </footer>
     <!-- Footer -->
-    
+
 
     <!-- Optional JavaScript; choose one of the two! -->
 
@@ -245,5 +248,6 @@ session_start();
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js" integrity="sha384-7+zCNj/IqJ95wo16oMtfsKbZ9ccEh31eOz1HGyDuCQ6wgnyJNSYdrPa03rtR1zdB" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js" integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13" crossorigin="anonymous"></script>
     -->
-  </body>
+</body>
+
 </html>
