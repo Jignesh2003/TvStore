@@ -1,12 +1,52 @@
+<?php
+session_start();
+
+if (isset($_SESSION['isLogin'])) {
+    header("Location: /");
+    exit();
+}
+
+require_once 'Utils/Auth.php';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Create an instance of Authentication with the values sent from the form
+    $authenticate = new Authentication(
+        null,
+        null,
+        $_POST['email'],      // User's email
+        $_POST['password'],    // User's password
+    );
+
+    $result = $authenticate->login();
+
+    if ($result) {
+        echo "<div id='alert' class='position-fixed top-0 start-0 end-0 alert alert-danger' role='alert' style='z-index:10'>
+                $result
+            </div>";
+
+        echo "<script>
+            setTimeout(() => {
+                document.getElementById('alert').style.display = 'none';
+            }, 4000);
+        </script>";
+    } else {
+        header('Location: /');
+        exit();
+    }
+}
+
+?>
+
 <!doctype html>
 <html lang="en">
-  <head>
+
+<head>
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Television Login</title>
     <!-- Required meta tags -->
-    
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
@@ -21,8 +61,10 @@
             padding-left: 4rem;
             margin: 0;
         }
-        .login, .image {
-        min-height: 90vh;
+
+        .login,
+        .image {
+            min-height: 90vh;
         }
 
         .bg-image {
@@ -30,119 +72,26 @@
             background-size: cover;
             background-position: center center;
         }
-
     </style>
     <title>Login</title>
-  </head>
-  <body>
+</head>
 
-  <?php
-    if($_SERVER["REQUEST_METHOD"] == "POST") {
-        $servername = "localhost";
-        $username = "root";
-        $password = "";
-        $database = "televisiondb";
-
-        // Create connection
-        $conn = new mysqli($servername, $username, $password, $database);
-
-        // Check connection
-        if ($conn->connect_error) {
-        // die("Connection failed: " . $conn->connect_error);
-        }
-        else {
-            // echo "Connected successfully";
-            try {
-                $emailId = $_POST['inputEmail'];
-                $password = $_POST['inputPassword'];
-                $sql = "SELECT * FROM `users` where `EmailId`='$emailId' and `Password`='$password';";
-                $result = $conn->query($sql);
-                if ($result->num_rows == 1) {
-                    session_start();
-                    
-                    while($row = $result->fetch_assoc()) {
-                        $_SESSION["FirstName"] = $row['FirstName'];
-                        $_SESSION["LastName"] = $row['LastName'];
-                        $_SESSION["UserId"] = $row['UserId'];
-                        $_SESSION["Email"] = $row['EmailId']; 
-                        $_SESSION["isLogin"] = true;
-                        $_SESSION["AvailBalance"] = $row['Balance'];
-                      }
-                      header("Location: ./index.php");
-                    ?>
-                        <div class="alert alert-success" role="alert">
-                            Login successfully
-                        </div>
-                <?php
-                } else {
-                    ?>
-                        <div class="alert alert-warning" role="alert">
-                            Invalid Credentials
-                        </div>
-                    <?php
-                }
-                $conn->close();
-            }
-            catch(Exception $e) {
-                echo "some error occured";
-            }
-        }
-    }
-    ?>
+<body>
 
     <!-- NAV BAR -->
-    <div class="bg-dark navbar-dark">
-        <nav class="navbar navbar-expand-lg">
-            <div class="container-fluid pe-lg-2 p-0"> <a class="navbar-brand ms-5" href="#"><img
-                        src="Images/logo.png" height="70vh"></a> <button class="navbar-toggler" type="button"
-                    data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
-                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"> <span
-                        class="navbar-toggler-icon"></span> </button>
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <ul class="navbar-nav ms-5 mb-2 mb-lg-0">
-                        <li class="nav-item"> <a class="nav-link pe-3 me-4 fw-bold" aria-current="page"
-                                href="./index.php">HOME</a> </li>
-                        <li class="nav-item"> <a class="nav-link pe-3 me-4 fw-bold active" href="./login.php">LOGIN</a> </li>
-                        <li class="nav-item"> <a class="nav-link pe-3 me-4 fw-bold" href="./signup.php">SIGN-UP</a> </li>
-                    </ul>
-                    <ul class="navbar-nav icons ms-auto mb-2 mb-lg-0">
-                    <li class=" nav-item pe-5"> 
-                        <button onclick="window.location.href='./cart.php'" type="button" class="btn btn-primary position-relative" >
-                                <a class="fa fa-shopping-bag" style="color:white;"></a>
-                                <?php
-                                            if(isset($_SESSION['isLogin'])) {                                                       // Displaing list of items
-                                                $user = $_SESSION['UserId']; 
-                                                $sql = "SELECT COUNT(*) as total FROM `orders` WHERE UserId=$user;";
-                                                $result = $conn->query($sql);
-                                                while($row = $result->fetch_assoc()) { ?>
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                                    <?php
-                                                        echo $row['total'];
-                                                    ?>
-                                </span>
-                                <?php
-                                                }
-                                            }
-                                ?>   
-                            </button>  
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
-    </div>
+    <?php require_once(__DIR__ . '/Components/Nav.php'); ?>
     <!-- NAV BAR -->
-    
+
     <div class="container-fluid">
         <div class="row no-gutter">
             <!-- The image half -->
             <div class="col-md-6 d-none d-md-flex bg-image"></div>
-    
-    
+
+
             <!-- The content half -->
             <div class="col-md-6 bg-light">
                 <div class="login d-flex align-items-center py-5">
-    
+
                     <!-- Demo content-->
                     <div class="container">
                         <div class="row">
@@ -151,10 +100,10 @@
                                 <br>
                                 <form action="<?php $_PHP_SELF ?>" method="POST">
                                     <div class="form-group mb-3">
-                                        <input name="inputEmail" type="email" placeholder="Email address" required="" autofocus="" class="form-control rounded-pill border-1 shadow-sm px-4">
+                                        <input name="email" type="email" placeholder="Email address" required="" autofocus="" class="form-control rounded-pill border-1 shadow-sm px-4">
                                     </div>
                                     <div class="form-group mb-3">
-                                        <input name="inputPassword" type="password" placeholder="Password" required="" class="form-control rounded-pill border-1 shadow-sm px-4 text-primary">
+                                        <input name="password" type="password" placeholder="Password" required="" class="form-control rounded-pill border-1 shadow-sm px-4 text-primary">
                                     </div>
                                     <button type="submit" class="btn btn-primary btn-block text-uppercase mb-2 rounded-pill shadow-sm">Sign in</button>
                                 </form>
@@ -163,55 +112,17 @@
                             </div>
                         </div>
                     </div><!-- End -->
-    
+
                 </div>
             </div><!-- End -->
-    
+
         </div>
     </div>
 
     <!-- Footer -->
-    <footer class="bg-dark text-center text-white">
-        <!-- Grid container -->
-        <div class="container p-4 pb-0">
-            <!-- Section: Social media -->
-            <section class="mb-4">
-                <!-- Facebook -->
-                <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button"><i
-                        class="fa fa-facebook-f"></i></a>
-
-                <!-- Twitter -->
-                <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button"><i
-                        class="fa fa-twitter"></i></a>
-
-                <!-- Google -->
-                <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button"><i
-                        class="fa fa-google"></i></a>
-
-                <!-- Instagram -->
-                <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button"><i
-                        class="fa fa-instagram"></i></a>
-
-                <!-- Linkedin -->
-                <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button"><i
-                        class="fa fa-linkedin-square"></i></a>
-
-                <!-- Github -->
-                <a class="btn btn-outline-light btn-floating m-1" href="#!" role="button"><i
-                        class="fa fa-github"></i></a>
-            </section>
-            <!-- Section: Social media -->
-        </div>
-        <!-- Grid container -->
-
-        <!-- Copyright -->
-        <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.2);">
-            © 2022 Copyright:
-        </div>
-        <!-- Copyright -->
-    </footer>
+    <?php require_once(__DIR__ . '/Components/Footer.php'); ?>
     <!-- Footer -->
-    
+
 
     <!-- Optional JavaScript; choose one of the two! -->
 
@@ -223,5 +134,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js" integrity="sha384-7+zCNj/IqJ95wo16oMtfsKbZ9ccEh31eOz1HGyDuCQ6wgnyJNSYdrPa03rtR1zdB" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js" integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13" crossorigin="anonymous"></script>
     -->
-  </body>
+</body>
+
 </html>

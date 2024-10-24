@@ -18,7 +18,7 @@ class Validation
 
         // Remove harmful characters and patterns using a regex.
         // This regex allows only alphanumeric characters, spaces, and a few selected characters.
-        $string = preg_replace('/[^a-zA-Z0-9\s\-_\.@]/', '', $string);
+        $string = preg_replace('/[^a-zA-Z0-9\s\-_\.@!#$%^&*+=~]/', '', $string);
 
         // Further sanitize the string by escaping certain characters.
         $string = str_replace([';', '--', '/*', '*/', '>', '<'], '', $string);
@@ -35,11 +35,11 @@ class Validation
      * maximum length of 254 characters and includes basic validation 
      * for allowed characters, domain name, and TLD (Top Level Domain).
      *
-     * @return bool Returns true if the email is valid, false otherwise.
+     * @return bool Return true if the email is valid, false otherwise
      */
     public static function isValidEmail($email)
     {
-        return !preg_match("/^(?=.{1,254}$)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?$/", $email) === 1;
+        return preg_match("/^(?=.{1,254}$)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?$/", $email) === 1;
     }
 
 

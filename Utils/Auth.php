@@ -1,32 +1,60 @@
 <?php
 
-require_once './Validation.php';
+require_once(__DIR__ . '/Validation.php');
 
 class Authentication
 {
-    public $firstName;
-    public $userId;
-    public $lastName;
-    public $email;
-    public $password;
+    private $firstName;
+    private $lastName;
+    private $email;
+    private $password;
+    private $confirm_password;
 
     /**
-     * Sets user values.
+     * Initializes the user authentication data.
      *
      * This function assigns the provided user information to the object's properties.
-     * These values can later be used to manage user authentication or session information.
+     * The values are sanitized to prevent SQL injection.
      *
      * @param string $firstName The user's first name.
      * @param string $lastName The user's last name.
      * @param string $email The user's email address.
      * @param string $password The user's password.
+     * @param string $password The user's confirm password.
+     *
      */
-    function setValue($firstName, $lastName, $email, $password)
+    public function __construct($firstName = null, $lastName = null, $email = null, $password = null, $confirm_password = null)
     {
-        $this->firstName = Validation::preventSQLInjection($firstName);
-        $this->lastName = Validation::preventSQLInjection($lastName);
-        $this->email = Validation::preventSQLInjection($email);
-        $this->password = Validation::preventSQLInjection($password);
+        // Si los valores son proporcionados, los sanitizamos
+        if ($firstName !== null) {
+            $this->firstName = Validation::preventSQLInjection($firstName);
+        }
+
+        if ($lastName !== null) {
+            $this->lastName = Validation::preventSQLInjection($lastName);
+        }
+
+        if ($email !== null) {
+            $this->email = Validation::preventSQLInjection($email);
+        }
+
+        if ($password !== null) {
+            $this->password = Validation::preventSQLInjection($password);
+        }
+
+        if ($confirm_password !== null) {
+            $this->confirm_password = Validation::preventSQLInjection($confirm_password);
+        }
+    }
+
+    /**
+     * Gets the user's email.
+     *
+     * @return string The sanitized email address.
+     */
+    public function getEmail()
+    {
+        return $this->email;
     }
 
     /**
@@ -58,27 +86,113 @@ class Authentication
         return $conn;
     }
 
+    /**
+     * Registers a new user in the database.
+     *
+     * This function checks if the provided password and confirmed password match,
+     * validates the email format, checks for existing email addresses in the database,
+     * and validates the password against security criteria. If all checks pass,
+     * the user is registered in the database and a session is initialized.
+     *
+     * @return string|false Returns an error message if any validation fails, 
+     *                     or false if the registration is successful.
+     */
     function register()
     {
+        // Check if the confirmed password is not the same as the original password
+        if ($this->confirm_password != $this->password) return 'The passwords do not match.';
+
         // Validate the email format
         $validateEmail = Validation::isValidEmail($this->email);
-        if ($validateEmail) return 'The provided email address is not valid.';
+        if (!$validateEmail) return 'The provided email address is not valid.';
 
         // Check if the email already exists in the database
         $validateEmail = $this->existEmail();
         if ($validateEmail) return 'The email address is already registered.';
 
-
         // Validate the password against security criteria
         $validatePassword = Validation::validatePassword($this->password);
         if ($validatePassword[0]) return $validatePassword[1];
 
+        // Hash the password for secure storage
         $this->password = $this->hashPassword($this->password);
 
+        // Establish a connection to the database
         $conn = $this->dataBase();
 
-        $stmt = $conn->prepare("INSERT INTO users (firstname, lastname, email, password) VALUE (?, ?, ?, ?)");
-        $stmt->bind_param('ssss', $this->lastName);
+        // Prepare the SQL statement to insert a new user into the database
+        $stmt = $conn->prepare("INSERT INTO users (firstname, lastname, email, password) VALUES (?, ?, ?, ?)");
+
+        // Bind parameters to the prepared statement
+        $stmt->bind_param('ssss', $this->firstName, $this->lastName, $this->email, $this->password);
+
+        // Execute the statement
+        $stmt->execute();
+
+        // Close the statement to free up resources
+        $stmt->close();
+
+        // Close the database connection
+        $conn->close();
+
+        // Initialize the session for the newly registered user
+        $this->initializeSession();
+
+        // Return false to indicate successful registration
+        return false;
+    }
+
+    /**
+     * Handles user login by validating the email and password.
+     *
+     * This function checks if the email exists in the database.
+     * If the email exists, it verifies the password. 
+     * If the credentials are correct, it initializes the user session.
+     * 
+     * @return string|null Returns a success message if the login is successful,
+     *                    an error message if the email does not exist, 
+     *                    or if the password does not match.
+     */
+    function login()
+    {
+        // Check if the email exists in the database
+        $validateEmail = $this->existEmail();
+
+        // If the email exists, verify the password
+        if ($validateEmail) {
+            // Establish a connection to the database
+            $conn = $this->dataBase();
+
+            // Prepare the SQL statement to check if the email exists in the users table
+            $stmt = $conn->prepare("SELECT password FROM users WHERE email = ?");
+
+            // Bind the email parameter to the prepared statement
+            $stmt->bind_param('s', $this->email);
+
+            // Execute the prepared statement
+            $stmt->execute();
+
+            // Get the result of the executed query
+            $result = $stmt->get_result();
+
+            // Fetch the password from the result
+            $row = $result->fetch_assoc(); // Fetch the associative array
+            $storedPassword = $row['password']; // Get the stored password
+
+            // Verify if the provided password matches the stored password
+            if ($this->verifyPassword($this->password, $storedPassword)) {
+                // Initialize the session for the user if the password is correct
+                $this->initializeSession();
+
+                return false;
+            } else {
+                // Return an error message if the password does not match
+                return "The password entered does not match our records. Please try again.";
+            }
+        } else {
+            // Return an error message if the email does not exist
+            return "The email address entered does not exist. Please check it or register for a new account.";
+        }
     }
 
     /**
@@ -89,7 +203,7 @@ class Authentication
      *
      * @return array|false Returns an associative array of user data if found, or null otherwise.
      */
-    public function get_user()
+    public function getUser()
     {
         // Check if the "rememberMe" cookie is set and valid
         if (isset($_COOKIE['rememberMe']) && !empty($_COOKIE['rememberMe'])) {
@@ -97,7 +211,7 @@ class Authentication
             return $this->getUserByToken();
 
             // If "rememberMe" is not set, check if the user is logged in with a session
-        } else if (isset($_SESSION['email'])) {
+        } else if (isset($_SESSION['isLogin']) && $_SESSION['isLogin']) {
             // Get the email from the session
             $email = $_SESSION['email'];
 
@@ -105,7 +219,7 @@ class Authentication
             $conn = $this->dataBase();
 
             // Prepare the SQL statement to select the user based on the session email
-            $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+            $stmt = $conn->prepare("SELECT id, firstname, lastname, email FROM users WHERE email = ?");
 
             // Bind the email parameter to the statement
             $stmt->bind_param("s", $email);
@@ -143,7 +257,7 @@ class Authentication
         $conn = $this->dataBase();
 
         // Prepare the SQL statement to check if the email exists in the users table
-        $stmt = $conn->prepare("SELECT email FROM users WHERE email = ?");
+        $stmt = $conn->prepare("SELECT email FROM users WHERE email = ?"); // Selecting only the email for efficiency
 
         // Bind the email parameter to the prepared statement
         $stmt->bind_param('s', $this->email);
@@ -202,8 +316,6 @@ class Authentication
         return password_verify($inputPassword, $storedHash);
     }
 
-
-
     /**
      * Initializes a user session and manages "remember me" functionality.
      *
@@ -216,19 +328,22 @@ class Authentication
      */
     private function initializeSession($rememberMe = false)
     {
-        // Set a custom name for the session
-        session_name("login");
+        // Check if a session is already started
+        if (session_status() === PHP_SESSION_NONE) {
+            // Set a custom name for the session
+            session_name("login");
 
-        // Start the session with custom cookie parameters
-        session_start([
-            'cookie_lifetime' => 0,  // The session cookie lasts until the browser is closed
-            'cookie_secure' => false, // Should be true if using HTTPS
-            'cookie_httponly' => true, // Prevents JavaScript from accessing the session cookie
-            'cookie_samesite' => 'Strict' // Restricts cookie to same-site requests
-        ]);
+            // Start the session with custom cookie parameters
+            session_start([
+                'cookie_lifetime' => 0,  // The session cookie lasts until the browser is closed
+                'cookie_secure' => false, // Should be true if using HTTPS
+                'cookie_httponly' => true, // Prevents JavaScript from accessing the session cookie
+                'cookie_samesite' => 'Strict' // Restricts cookie to same-site requests
+            ]);
 
-        // Regenerate the session ID to prevent session fixation attacks
-        session_regenerate_id(true);
+            // Regenerate the session ID to prevent session fixation attacks
+            session_regenerate_id(true);
+        }
 
         // Handle "remember me" functionality
         if ($rememberMe) {
